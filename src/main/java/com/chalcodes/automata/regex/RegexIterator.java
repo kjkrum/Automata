@@ -1,28 +1,28 @@
 package com.chalcodes.automata.regex;
 
 import javax.annotation.Nonnull;
-import java.util.NoSuchElementException;
+import java.nio.BufferOverflowException;
+import java.nio.CharBuffer;
 
 /**
- * TODO javadoc
+ * Iterates over a regular expression.
  *
  * @author Kevin Krumwiede
  */
 class RegexIterator {
-	private final String mRegex;
-	private int mNext = 0;
+	private final CharBuffer mBuffer;
 
-	RegexIterator(@Nonnull final String regex) {
-		mRegex = regex;
+	RegexIterator(@Nonnull final CharSequence regex) {
+		mBuffer = CharBuffer.wrap(regex);
 	}
 
 	/**
 	 * Gets the index of the next character.
 	 *
-	 * @return the intext of the next character
+	 * @return the index of the next character.
 	 */
 	int position() {
-		return mNext;
+		return mBuffer.position();
 	}
 
 	/**
@@ -31,7 +31,37 @@ class RegexIterator {
 	 * @return true if this iterator has more characters; otherwise false
 	 */
 	boolean hasNext() {
-		return mNext < mRegex.length();
+		return mBuffer.hasRemaining();
+	}
+
+	/**
+	 * Advances the iterator position by one character.
+	 */
+	void skip() {
+		mBuffer.position(mBuffer.position() + 1);
+	}
+
+	/**
+	 * Copies the next character, or two if the next character is the first of
+	 * a surrogate pair.
+	 *
+	 * @param buffer the buffer to receive the characters
+	 */
+	void next(@Nonnull final CharBuffer buffer) {
+		final char c = peek();
+		if(Character.isHighSurrogate(c)) {
+			if(mBuffer.remaining() < 2) {
+				throw new ParseException("incomplete surrogate pair", mBuffer.position());
+			}
+			if(buffer.remaining() < 2) {
+				throw new BufferOverflowException();
+			}
+			buffer.put(mBuffer.get());
+			buffer.put(mBuffer.get());
+		}
+		else {
+			buffer.put(mBuffer.get());
+		}
 	}
 
 	/**
@@ -40,42 +70,23 @@ class RegexIterator {
 	 * @return the next character
 	 */
 	char peek() {
-		if(hasNext()) {
-			return mRegex.charAt(mNext);
-		}
-		else {
-			throw new NoSuchElementException();
-		}
-	}
-
-	/**
-	 * Removes the next character.
-	 *
-	 * @return the next character
-	 */
-	char remove() {
-		if(hasNext()) {
-			return mRegex.charAt(mNext++);
-		}
-		else {
-			throw new NoSuchElementException();
-		}
+		return mBuffer.get(mBuffer.position());
 	}
 
 	/**
 	 * Asserts that the next character is equal to the required character.  If
-	 * so, the character is removed.
+	 * so, the character is skipped.
 	 *
-	 * @param required the next character
+	 * @param c the required character
 	 * @throws ParseException if the next character is not equal to the
 	 * required character
 	 */
-	void require(final char required) {
-		if(hasNext() && peek() == required) {
-			remove();
+	void require(final char c) {
+		if(peek() == c) {
+			skip();
 		}
 		else {
-			throw new ParseException("'" + required + "' expected", mNext);
+			throw new ParseException("'" + c + "' expected", mBuffer.position());
 		}
 	}
 }

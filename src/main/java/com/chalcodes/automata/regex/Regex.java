@@ -4,64 +4,80 @@ import com.chalcodes.automata.Automaton;
 import com.chalcodes.automata.Automatons;
 
 import javax.annotation.Nonnull;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 
 /**
- * TODO javadoc
+ * Parses regular expressions.
  *
  * @author Kevin Krumwiede
  */
 public class Regex {
-	private Regex() {};
+	private Regex() {}
 
-	/* Adapted from http://matt.might.net/articles/parsing-regex-with-recursive-descent */
-	// TODO should this produce Automaton<Byte,T> instead?
-
-	@Nonnull public static <T> Automaton<Character, T> parse(@Nonnull final String regex) {
+	@Nonnull public static <T> Automaton<Byte, T> parse(@Nonnull final CharSequence regex, @Nonnull final Charset charset) {
 		final RegexIterator iter = new RegexIterator(regex);
-		final Automaton<Character, T> parsed = expr(iter);
-		/* Extra parentheses bubble up to here. */
+		final CharsetEncoder encoder = charset.newEncoder();
+		final CharBuffer input = CharBuffer.allocate(2);
+		final ByteBuffer output = ByteBuffer.allocate((int) Math.ceil(encoder.maxBytesPerChar()));
+		final Automaton<Byte, T> parsed = expr(iter, encoder, input, output);
 		if(iter.hasNext()) {
-			throw new ParseException("unexpected character", iter.position());
+			throw new ParseException("unexpected character", input.position());
 		}
 		return parsed;
 	}
 
-	@Nonnull private static <T> Automaton<Character, T> expr(@Nonnull final RegexIterator iter) {
+	@Nonnull private static <T> Automaton<Byte,T> expr(final RegexIterator iter,
+													   final CharsetEncoder encoder,
+													   final CharBuffer input,
+													   final ByteBuffer output) {
 		/* An expression is the union of one or more terms. */
-		final Automaton<Character, T> expr = term(iter);
+		final Automaton<Byte, T> expr = term(iter, encoder, input, output);
 		while(iter.hasNext() && iter.peek() == '|') {
-			iter.remove();
-			expr.union(Regex.<T>term(iter));
+			input.get();
+			expr.union(Regex.<T>term(iter, encoder, input, output));
 		}
 		return expr;
 	}
 
-	@Nonnull private static <T> Automaton<Character, T> term(@Nonnull final RegexIterator iter) {
+	@Nonnull private static <T> Automaton<Byte,T> term(final RegexIterator iter,
+													   final CharsetEncoder encoder,
+													   final CharBuffer input,
+													   final ByteBuffer output) {
 		/* A term is the concatenation of zero or more factors. */
-		final Automaton<Character, T> term = Automatons.empty();
-		while(iter.hasNext() && iter.peek() != '|' && iter.peek() != ')') {
-			term.concat(Regex.<T>factor(iter));
+		final Automaton<Byte, T> term = Automatons.empty();
+		while(iter.hasNext()) {
+			final char next = iter.peek();
+			if(next == '|' || next == ')') {
+				break;
+			}
+			term.concat(Regex.<T>factor(iter, encoder, input, output));
 		}
 		return term;
 	}
 
-	@Nonnull private static <T> Automaton<Character, T> factor(@Nonnull final RegexIterator iter) {
+	@Nonnull private static <T> Automaton<Byte,T> factor(final RegexIterator iter,
+														 final CharsetEncoder encoder,
+														 final CharBuffer input,
+														 final ByteBuffer output) {
 		/* A factor is a base followed by zero or one quantifiers. */
 		// TODO zero or more quantifiers?
-		final Automaton<Character, T> factor = base(iter);
+		final Automaton<Byte, T> factor = base(iter, encoder, input, output);
 		/* A quantifier is '*', '+', '?', or "{m,n}". */
 		if(iter.hasNext()) {
 			switch(iter.peek()) {
 				case '*':
-					iter.remove();
+					iter.skip();
 					factor.star();
 					break;
 				case '+':
-					iter.remove();
+					iter.skip();
 					factor.plus();
 					break;
 				case '?':
-					iter.remove();
+					iter.skip();
 					factor.optional();
 					break;
 				// TODO counted
@@ -70,22 +86,45 @@ public class Regex {
 		return factor;
 	}
 
-	@Nonnull private static <T> Automaton<Character, T> base(@Nonnull final RegexIterator iter) {
+	@Nonnull private static <T> Automaton<Byte,T> base(final RegexIterator iter,
+													   final CharsetEncoder encoder,
+													   final CharBuffer input,
+													   final ByteBuffer output) {
 		/* A base is a literal character, an escaped character, a set of
 		 * characters, or a parenthesized expression. */
 		switch(iter.peek()) {
 			case '(':
-				iter.remove();
-				final Automaton<Character, T> base = expr(iter);
+				iter.skip();
+				final Automaton<Byte, T> base = expr(iter, encoder, input, output);
 				iter.require(')');
 				return base;
 			case '\\':
-				iter.remove();
-				// TODO restrict which characters can be escaped?
-				// TODO character classes? (digits, etc.)
-				// fall through to default case
+				iter.skip();
+				switch(iter.peek()) {
+					case '(':
+					case ')':
+					case '{':
+					case '}':
+					case '[':
+					case ']':
+					case '|':
+					case '\\':
+						// fall through to default case of outer switch
+						break;
+					// TODO recognize character classes? (digits, etc.)
+					default:
+						throw new ParseException("unexpected character", iter.position());
+				}
 			default:
-				return Automatons.symbol(iter.remove());
+				input.clear();
+				iter.next(input);
+				input.flip();
+				output.clear();
+				encoder.reset();
+				encoder.encode(input, output, true);
+				encoder.flush(output);
+				output.flip();
+				return Automatons.sequence(output);
 		}
 	}
 }

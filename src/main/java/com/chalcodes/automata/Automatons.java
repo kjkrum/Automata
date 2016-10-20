@@ -1,6 +1,7 @@
 package com.chalcodes.automata;
 
 import javax.annotation.Nonnull;
+import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 
@@ -40,6 +41,18 @@ public class Automatons {
 		for(final S symbol : symbols) {
 			final State<S,T> next = new State<>();
 			tail.addTransition(symbol, next);
+			tail = next;
+		}
+		tail.setAccepting(true);
+		return new Automaton<>(initial);
+	}
+
+	public static <T> Automaton<Byte, T> sequence(@Nonnull final ByteBuffer buffer) {
+		final State<Byte,T> initial = new State<>();
+		State<Byte,T> tail = initial;
+		while(buffer.hasRemaining()) {
+			final State<Byte,T> next = new State<>();
+			tail.addTransition(buffer.get(), next);
 			tail = next;
 		}
 		tail.setAccepting(true);
