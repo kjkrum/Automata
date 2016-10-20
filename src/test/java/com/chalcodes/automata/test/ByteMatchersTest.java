@@ -12,11 +12,6 @@ import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/**
- * TODO javadoc
- *
- * @author Kevin Krumwiede
- */
 public class ByteMatchersTest {
 
 	@Test

@@ -6,17 +6,12 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * TODO javadoc
+ * Produces automatons.
  *
  * @author Kevin Krumwiede
  */
 public class Automatons {
 	private Automatons() {}
-
-//	public static <S,T> Automaton<S,T> none() {
-//		final State<S,T> initial = new State<>();
-//		return new Automaton<>(initial);
-//	}
 
 	public static <S,T> Automaton<S,T> empty() {
 		final State<S,T> initial = new State<>();

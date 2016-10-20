@@ -17,7 +17,17 @@ import java.nio.charset.CharsetEncoder;
 public class Regex {
 	private Regex() {}
 
-	@Nonnull public static <T> Automaton<Byte, T> parse(@Nonnull final CharSequence regex, @Nonnull final Charset charset) {
+	/**
+	 * Parses a regular expression.  The character set must produce encoders
+	 * that do not write a byte order mark.
+	 *
+	 * @param regex the regular expression
+	 * @param charset the encoding the resulting automaton will recognize
+	 * @param <T> the type of semantic values associated with accepting states
+	 * @return an automaton corresponding to the regular expression
+	 */
+	@Nonnull public static <T> Automaton<Byte, T> parse(@Nonnull final CharSequence regex,
+														@Nonnull final Charset charset) {
 		final RegexIterator iter = new RegexIterator(regex);
 		final CharsetEncoder encoder = charset.newEncoder();
 		final CharBuffer input = CharBuffer.allocate(2);

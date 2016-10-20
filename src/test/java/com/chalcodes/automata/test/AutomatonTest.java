@@ -14,11 +14,6 @@ import java.util.Set;
 
 import static org.junit.Assert.assertTrue;
 
-/**
- * TODO javadoc
- *
- * @author Kevin Krumwiede
- */
 public class AutomatonTest {
 
 	private static final List<String> FOO_ETC;

@@ -8,11 +8,6 @@ import org.junit.Test;
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 
-/**
- * TODO javadoc
- *
- * @author Kevin Krumwiede
- */
 public class RegexTest {
 	private static final TransitionLabeler<Byte> gLabeler = new TransitionLabeler<Byte>() {
 		@Override
