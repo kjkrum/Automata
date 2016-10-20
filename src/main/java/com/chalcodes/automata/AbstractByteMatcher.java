@@ -6,11 +6,11 @@ import java.nio.ByteBuffer;
 import java.util.BitSet;
 
 /**
- * TODO javadoc
+ * Abstract superclass of byte matchers.
  *
  * @author Kevin Krumwiede
  */
-public class AbstractByteMatcher implements ByteMatcher {
+abstract class AbstractByteMatcher implements ByteMatcher {
 	private static final int INITIAL = 0;
 	private static final int NO_MATCH = -1;
 	static final int NO_TRANSITION = -1;
